@@ -11,7 +11,6 @@ use portablesource_rs::{
 use log::{info, error, warn, LevelFilter};
 use std::path::PathBuf;
 use std::sync::OnceLock;
-// use std::io; // not used
 
 // Глобальная переменная для хранения install_path в текущей сессии
 static SESSION_INSTALL_PATH: OnceLock<PathBuf> = OnceLock::new();

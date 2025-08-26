@@ -524,7 +524,9 @@ impl<'a> PipManager<'a> {
             onnx_cmd.push("--pre".into());
         }
         
-        onnx_cmd.extend(["--index-strategy".into(), "unsafe-best-match".into()]);
+        if uv_available {
+            onnx_cmd.extend(["--index-strategy".into(), "unsafe-best-match".into()]);
+        }
         onnx_cmd.push(onnx_spec);
         
         if let Err(_) = self.command_runner.run(&onnx_cmd, Some("Installing ONNX with GPU support"), repo_path) {
@@ -539,7 +541,9 @@ impl<'a> PipManager<'a> {
                     cmd.push("install".into());
                     cmd
                 };
-                fallback_cmd.extend(["--index-strategy".into(), "unsafe-best-match".into()]);
+                if uv_available {
+                    fallback_cmd.extend(["--index-strategy".into(), "unsafe-best-match".into()]);
+                }
                 fallback_cmd.push(self.get_onnx_package_spec());
                 let _ = self.command_runner.run(&fallback_cmd, Some("Installing ONNX (fallback)"), repo_path);
             }
@@ -840,9 +844,11 @@ impl<'a> PipManager<'a> {
                 cmd.push("--pre".into());
             }
             
-            // Add dependency resolution strategy flags for better conflict handling
-            cmd.extend(["--resolution".into(), "highest".into()]);
-            cmd.extend(["--index-strategy".into(), "unsafe-best-match".into()]);
+            // Add dependency resolution strategy flags for better conflict handling (uv only)
+            if uv_available {
+                cmd.extend(["--resolution".into(), "highest".into()]);
+                cmd.extend(["--index-strategy".into(), "unsafe-best-match".into()]);
+            }
             
             // Add package specs with proper version handling
             for pkg in &plan.regular_packages {
