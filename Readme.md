@@ -1,24 +1,26 @@
 # portablesource
-Rust library for GUI
 
-## Installing in LINUX by this simple command:
+Portable AI/ML Environment Manager. The last deployment tool you'll ever need.
+
+_Say goodbye to "dependency hell". Forever._
+
+## Installation (Linux)
 ```
 curl -sSL install.portables.dev | bash
 ```
 
+## What is this?
+
+`portablesource` allows you to deploy almost any AI/ML repository with a single command. No more fighting with `requirements.txt`, CUDA errors, or virtual environments. It's designed to be a true "plug-and-play" solution that works on your local machine, in the cloud, or anywhere else.
+
+The goal is to provide a seamless, portable, and reliable experience, making complex deployments simple.
+
 ## License
 
-Copyright (c) 2025 PortableSource / NeuroDonu
+This project is licensed under the **GNU Affero General Public License v3.0**.
 
-This work is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License**.
+This means you are free to share and adapt the material for non-commercial and open-source projects. In simple terms: you can use it, learn from it, and contribute to it.
 
-This means you are free to share and adapt the material, but:
-- You **must give credit**.
-- You **cannot use it for commercial purposes**.
-- You **must share any adaptations under the same license**.
+See the [LICENSE](LICENSE) file for the full legal text.
 
-**In plain English: NO ONE is allowed to sell this software or use it in a commercial product without my explicit written permission.**
-
-For the full legal code, see the [LICENSE](LICENSE) file.
-
-For commercial licensing inquiries, please contact me at [contact@portables.dev](mailto:contact@portables.dev)
+**For commercial licensing inquiries, please contact me at [contact@portables.dev](mailto:contact@portables.dev)**
