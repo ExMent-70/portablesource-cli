@@ -105,11 +105,15 @@ impl<'a> DependencyInstaller<'a> {
 
         if cfg!(windows) {
             // Windows: копируем портативный Python в envs/{repo}
-            let ps_env_python = install_path.join("ps_env").join("python");
+            // Определяем версию Python для использования
+            let config_manager = crate::config::ConfigManager::new(Some(install_path.join("portablesource_config.json")))?;
+            let python_version = config_manager.get_default_python_version();
+            let ps_env_python = install_path.join("ps_env").join(python_version.folder_name());
+            
             if !ps_env_python.exists() { 
-                return Err(PortableSourceError::installation(format!("Portable Python not found at: {:?}", ps_env_python))); 
+                return Err(PortableSourceError::installation(format!("Portable Python {} not found at: {:?}", python_version.as_str(), ps_env_python))); 
             }
-            info!("Creating environment by copying portable Python: {:?} -> {:?}", ps_env_python, venv_path);
+            info!("Creating environment by copying portable Python {}: {:?} -> {:?}", python_version.as_str(), ps_env_python, venv_path);
             self.copy_dir_recursive(&ps_env_python, &venv_path)?;
             let python_exe = venv_path.join("python.exe");
             if !python_exe.exists() { 

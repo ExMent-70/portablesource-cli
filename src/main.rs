@@ -25,7 +25,7 @@ use portablesource_rs::{
     Result,
 };
 use log::{info, error, warn, LevelFilter};
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::sync::OnceLock;
 
 // Глобальная переменная для хранения install_path в текущей сессии
@@ -67,11 +67,11 @@ async fn run(cli: Cli) -> Result<()> {
     // Handle install path from CLI, registry, config, or default
     // Skip interactive prompt for commands that don't need install_path
     #[cfg(windows)]
-    let needs_install_path = matches!(cli.command, Some(Commands::SetupEnv) | Some(Commands::InstallRepo { .. }) | Some(Commands::UpdateRepo { .. }) | Some(Commands::DeleteRepo { .. }) | Some(Commands::ListRepos) | Some(Commands::CheckEnv));
+    let needs_install_path = matches!(cli.command, Some(Commands::SetupEnv) | Some(Commands::InstallRepo { .. }) | Some(Commands::UpdateRepo { .. }) | Some(Commands::DeleteRepo { .. }) | Some(Commands::ListRepos) | Some(Commands::CheckEnv) | Some(Commands::Pack { .. }));
     #[cfg(unix)]
-    let needs_install_path = matches!(cli.command, Some(Commands::SetupEnv) | Some(Commands::InstallRepo { .. }) | Some(Commands::UpdateRepo { .. }) | Some(Commands::DeleteRepo { .. }) | Some(Commands::ListRepos) | Some(Commands::ChangePath) | Some(Commands::CheckEnv) | Some(Commands::Uninstall));
+    let needs_install_path = matches!(cli.command, Some(Commands::SetupEnv) | Some(Commands::InstallRepo { .. }) | Some(Commands::UpdateRepo { .. }) | Some(Commands::DeleteRepo { .. }) | Some(Commands::ListRepos) | Some(Commands::ChangePath) | Some(Commands::CheckEnv) | Some(Commands::Uninstall) | Some(Commands::Pack { .. }));
     #[cfg(all(not(windows), not(unix)))]
-    let needs_install_path = matches!(cli.command, Some(Commands::SetupEnv) | Some(Commands::InstallRepo { .. }) | Some(Commands::UpdateRepo { .. }) | Some(Commands::DeleteRepo { .. }) | Some(Commands::ListRepos) | Some(Commands::CheckEnv));
+    let needs_install_path = matches!(cli.command, Some(Commands::SetupEnv) | Some(Commands::InstallRepo { .. }) | Some(Commands::UpdateRepo { .. }) | Some(Commands::DeleteRepo { .. }) | Some(Commands::ListRepos) | Some(Commands::CheckEnv) | Some(Commands::Pack { .. }));
 
     let install_path = if let Some(cached_path) = SESSION_INSTALL_PATH.get() {
         // Используем сохраненный путь из текущей сессии
@@ -283,8 +283,8 @@ async fn run(cli: Cli) -> Result<()> {
         Some(Commands::ChangePath) => {
             change_installation_path(&mut config_manager).await
         }
-        Some(Commands::InstallRepo { repo }) => {
-            install_repository(repo, &install_path, &config_manager).await
+        Some(Commands::InstallRepo { repo, python_ver }) => {
+            install_repository(repo, python_ver.as_deref(), &install_path, &config_manager).await
         }
         Some(Commands::UpdateRepo { repo }) => {
             update_repository(repo.clone(), &install_path, &config_manager).await
@@ -320,6 +320,14 @@ async fn run(cli: Cli) -> Result<()> {
         Some(Commands::Version) => {
             utils::show_version();
             Ok(())
+        }
+        #[cfg(windows)]
+        Some(Commands::SetVersion { version }) => {
+            set_python_version(version, &config_manager)
+        }
+        #[cfg(windows)]
+        Some(Commands::Pack { repo }) => {
+            pack_repository(repo, &install_path, &config_manager)
         }
         None => {
             // No command provided, show system info by default
@@ -407,8 +415,19 @@ async fn change_installation_path(config_manager: &mut ConfigManager) -> Result<
     Ok(())
 }
 
-async fn install_repository(repo: &str, install_path: &PathBuf, config_manager: &ConfigManager) -> Result<()> {
+async fn install_repository(repo: &str, python_ver: Option<&str>, install_path: &PathBuf, config_manager: &ConfigManager) -> Result<()> {
     let mut installer = RepositoryInstaller::new(install_path.clone(), config_manager.clone());
+    
+    // Set Python version context if specified
+    if let Some(ver_str) = python_ver {
+        if let Some(version) = portablesource_rs::config::PythonVersion::from_str(ver_str) {
+            info!("Using Python version: {}", version.as_str());
+            // The version will be used during dependency installation
+        } else {
+            return Err(PortableSourceError::config(format!("Invalid Python version: {}. Use 310 or 311", ver_str)));
+        }
+    }
+    
     installer.install_repository(repo).await
 }
 
@@ -618,5 +637,136 @@ fn check_gpu() -> Result<()> {
     let gpu_detector = GpuDetector::new();
     let has_nvidia = gpu_detector.has_nvidia_gpu();
     println!("{}", has_nvidia);
+    Ok(())
+}
+
+#[cfg(windows)]
+fn set_python_version(version: &str, config_manager: &ConfigManager) -> Result<()> {
+    use portablesource_rs::config::PythonVersion;
+    
+    let python_version = PythonVersion::from_str(version)
+        .ok_or_else(|| PortableSourceError::config(format!("Invalid Python version: {}. Use 310 or 311", version)))?;
+    
+    config_manager.set_default_python_version(python_version)?;
+    println!("Default Python version set to: {}", version);
+    
+    // Check if the version is installed
+    if !config_manager.is_python_version_installed(&config_manager.get_default_python_version()) {
+        println!("Warning: Python {} is not installed. Run 'setup-env' to install it.", version);
+    }
+    
+    Ok(())
+}
+
+#[cfg(windows)]
+fn pack_repository(repo: &str, install_path: &PathBuf, _config_manager: &ConfigManager) -> Result<()> {
+    use std::fs;
+    
+    println!("Packing repository: {}", repo);
+    
+    // Check if repo exists
+    let repos_path = install_path.join("repos");
+    let repo_path = repos_path.join(repo);
+    if !repo_path.exists() {
+        return Err(PortableSourceError::repository(format!("Repository '{}' not found", repo)));
+    }
+    
+    // Check if environment exists
+    let envs_path = install_path.join("envs");
+    let env_path = envs_path.join(repo);
+    if !env_path.exists() {
+        return Err(PortableSourceError::repository(format!("Environment for '{}' not found", repo)));
+    }
+    
+    // Create pack directory
+    let pack_path = install_path.join("pack");
+    let pack_repo_path = pack_path.join(repo);
+    if pack_repo_path.exists() {
+        println!("Removing existing pack directory...");
+        fs::remove_dir_all(&pack_repo_path)?;
+    }
+    fs::create_dir_all(&pack_repo_path)?;
+    
+    // Create ps_env directory in pack
+    let pack_ps_env = pack_repo_path.join("ps_env");
+    fs::create_dir_all(&pack_ps_env)?;
+    
+    println!("Copying portable environment...");
+    
+    // Copy CUDA if exists
+    let ps_env_path = install_path.join("ps_env");
+    let cuda_src = ps_env_path.join("CUDA");
+    if cuda_src.exists() {
+        println!("  - Copying CUDA...");
+        let cuda_dst = pack_ps_env.join("CUDA");
+        copy_dir_recursive(&cuda_src, &cuda_dst)?;
+    }
+    
+    // Copy git
+    let git_src = ps_env_path.join("git");
+    if git_src.exists() {
+        println!("  - Copying git...");
+        let git_dst = pack_ps_env.join("git");
+        copy_dir_recursive(&git_src, &git_dst)?;
+    }
+    
+    // Copy ffmpeg
+    let ffmpeg_src = ps_env_path.join("ffmpeg");
+    if ffmpeg_src.exists() {
+        println!("  - Copying ffmpeg...");
+        let ffmpeg_dst = pack_ps_env.join("ffmpeg");
+        copy_dir_recursive(&ffmpeg_src, &ffmpeg_dst)?;
+    }
+    
+    // Copy repository environment
+    println!("  - Copying repository environment...");
+    let pack_envs = pack_repo_path.join("envs");
+    fs::create_dir_all(&pack_envs)?;
+    let env_dst = pack_envs.join(repo);
+    copy_dir_recursive(&env_path, &env_dst)?;
+    
+    // Copy repository
+    println!("  - Copying repository files...");
+    let pack_repos = pack_repo_path.join("repos");
+    fs::create_dir_all(&pack_repos)?;
+    let repo_dst = pack_repos.join(repo);
+    copy_dir_recursive(&repo_path, &repo_dst)?;
+    
+    // Create run batch file
+    println!("  - Creating run_{}.bat...", repo);
+    let run_bat_path = pack_repo_path.join(format!("run_{}.bat", repo));
+    let bat_content = format!(
+        "@echo off\n\
+         echo Starting {}...\n\
+         cd /d \"%~dp0\\repos\\{}\"\n\
+         call \"start_{}.bat\"\n\
+         pause\n",
+        repo, repo, repo
+    );
+    fs::write(&run_bat_path, bat_content)?;
+    
+    println!("\nRepository '{}' packed successfully!", repo);
+    println!("Pack location: {}", pack_repo_path.display());
+    println!("To run: execute run_{}.bat in the pack directory", repo);
+    
+    Ok(())
+}
+
+/// Helper function to copy directories recursively
+fn copy_dir_recursive(from: &Path, to: &Path) -> Result<()> {
+    use std::fs;
+    
+    fs::create_dir_all(to)?;
+    for entry in fs::read_dir(from)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        let src = entry.path();
+        let dst = to.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_recursive(&src, &dst)?;
+        } else {
+            fs::copy(&src, &dst)?;
+        }
+    }
     Ok(())
 }

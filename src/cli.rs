@@ -62,6 +62,9 @@ pub enum Commands {
     InstallRepo {
         /// Repository URL or name
         repo: String,
+        /// Python version to use (310, 311)
+        #[arg(long)]
+        python_ver: Option<String>,
     },
     
     /// Update repository (alias: ur)
@@ -111,6 +114,21 @@ pub enum Commands {
     
     /// Show version
     Version,
+    
+    /// Set default Python version (Windows only)
+    #[cfg(windows)]
+    #[command(alias = "set-version")]
+    SetVersion {
+        /// Python version to set as default (310, 311)
+        version: String,
+    },
+    
+    /// Pack repository with environment into portable package
+    #[cfg(windows)]
+    Pack {
+        /// Repository name to pack
+        repo: String,
+    },
 }
 
 impl Cli {

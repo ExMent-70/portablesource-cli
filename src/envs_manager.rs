@@ -101,12 +101,21 @@ impl PortableEnvironmentManager {
             },
         );
         map.insert(
-            "python".to_string(),
+            "python310".to_string(),
             PortableToolSpec {
-                name: "python".to_string(),
-                url: ToolLinks::Python311.url().to_string(),
-                extract_path: "python".to_string(),
-                executable_path: if is_windows { "python/python.exe" } else { "python/bin/python" }.to_string(),
+                name: "python310".to_string(),
+                url: ToolLinks::Python(crate::config::PythonVersion::Python310).url().to_string(),
+                extract_path: "python310".to_string(),
+                executable_path: if is_windows { "python310/python.exe" } else { "python310/bin/python" }.to_string(),
+            },
+        );
+        map.insert(
+            "python311".to_string(),
+            PortableToolSpec {
+                name: "python311".to_string(),
+                url: ToolLinks::Python(crate::config::PythonVersion::Python311).url().to_string(),
+                extract_path: "python311".to_string(),
+                executable_path: if is_windows { "python311/python.exe" } else { "python311/bin/python" }.to_string(),
             },
         );
         map
@@ -601,7 +610,7 @@ impl PortableEnvironmentManager {
         }
         // Each tool: download + extract (only for missing ones)
         let mut tools_to_install: Vec<&str> = Vec::new();
-        for key in ["python", "git", "ffmpeg"] {
+        for key in ["python310", "python311", "git", "ffmpeg"] {
             if !self.is_tool_installed(key) {
                 total_steps += 2;
                 tools_to_install.push(key);
@@ -720,6 +729,9 @@ impl PortableEnvironmentManager {
         // Install Git LFS (always run to ensure it's initialized)
         self.install_git_lfs().await?;
 
+        // Create default pythonver file with 311
+        self.create_default_pythonver_file()?;
+
         // CUDA paths are now computed dynamically when needed
 
         // Verify tools
@@ -766,9 +778,9 @@ impl PortableEnvironmentManager {
                 }
             }
         }
-        // python, git, ffmpeg each: download + extract (only for missing ones)
+        // python310, python311, git, ffmpeg each: download + extract (only for missing ones)
         let mut tools_to_install: Vec<&str> = Vec::new();
-        for key in ["python", "git", "ffmpeg"] {
+        for key in ["python310", "python311", "git", "ffmpeg"] {
             if !self.is_tool_installed(key) {
                 total_steps += 2;
                 tools_to_install.push(key);
@@ -1267,6 +1279,18 @@ fn update_download_pb_message(pb: &ProgressBar, downloaded: u64, total_opt: Opti
 
 fn bytes_to_mb(bytes: u64) -> f64 {
     (bytes as f64) / 1_000_000.0
+}
+
+impl PortableEnvironmentManager {
+    /// Create default pythonver file if it doesn't exist
+    fn create_default_pythonver_file(&self) -> Result<()> {
+        let pythonver_path = self.ps_env_path.join("pythonver");
+        if !pythonver_path.exists() {
+            std::fs::write(&pythonver_path, "311")?;
+            log::info!("Created default pythonver file with version 311");
+        }
+        Ok(())
+    }
 }
 
 // Data structures for detailed status/info

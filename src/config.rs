@@ -23,6 +23,44 @@ use crate::{Result, PortableSourceError};
 use crate::gpu::{GpuDetector, GpuInfo};
 use log::{info, warn};
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum PythonVersion {
+    #[serde(rename = "310")]
+    Python310,
+    #[serde(rename = "311")]
+    Python311,
+}
+
+impl PythonVersion {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            PythonVersion::Python310 => "310",
+            PythonVersion::Python311 => "311",
+        }
+    }
+    
+    pub fn folder_name(&self) -> &'static str {
+        match self {
+            PythonVersion::Python310 => "python310",
+            PythonVersion::Python311 => "python311",
+        }
+    }
+    
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "310" => Some(PythonVersion::Python310),
+            "311" => Some(PythonVersion::Python311),
+            _ => None,
+        }
+    }
+}
+
+impl Default for PythonVersion {
+    fn default() -> Self {
+        PythonVersion::Python311
+    }
+}
+
 // Constants
 pub const SERVER_DOMAIN: &str = "server.portables.dev";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -81,7 +119,7 @@ impl CudaVersion {
 pub enum ToolLinks {
     Git,
     Ffmpeg,
-    Python311,
+    Python(PythonVersion),
     MsvcBuildTools,
     // SevenZip удален, так как перешли на tar zstd
 }
@@ -91,7 +129,8 @@ impl ToolLinks {
         match self {
             ToolLinks::Git => "https://files.portables.dev/git.tar.zst",
             ToolLinks::Ffmpeg => "https://files.portables.dev/ffmpeg.tar.zst",
-            ToolLinks::Python311 => "https://files.portables.dev/python.tar.zst",
+            ToolLinks::Python(PythonVersion::Python310) => "https://files.portables.dev/python310.tar.zst",
+            ToolLinks::Python(PythonVersion::Python311) => "https://files.portables.dev/python311.tar.zst",
             ToolLinks::MsvcBuildTools => "https://aka.ms/vs/17/release/vs_buildtools.exe",
             // ToolLinks::SevenZip больше не используется, так как перешли на tar zstd
         }
@@ -130,6 +169,51 @@ pub struct ConfigManager {
 }
 
 impl ConfigManager {
+    /// Get the default Python version from pythonver file
+    pub fn get_default_python_version(&self) -> PythonVersion {
+        let pythonver_path = self.config.install_path.join("ps_env").join("pythonver");
+        if let Ok(content) = std::fs::read_to_string(&pythonver_path) {
+            let version_str = content.trim();
+            if let Some(version) = PythonVersion::from_str(version_str) {
+                return version;
+            }
+        }
+        PythonVersion::default()
+    }
+    
+    /// Set the default Python version and save to pythonver file
+    pub fn set_default_python_version(&self, version: PythonVersion) -> Result<()> {
+        let ps_env_path = self.config.install_path.join("ps_env");
+        std::fs::create_dir_all(&ps_env_path)?;
+        
+        let pythonver_path = ps_env_path.join("pythonver");
+        std::fs::write(&pythonver_path, version.as_str())?;
+        
+        info!("Default Python version set to: {}", version.as_str());
+        Ok(())
+    }
+    
+    /// Get Python executable path for a specific version
+    pub fn get_python_executable_path(&self, version: &PythonVersion) -> PathBuf {
+        let python_folder = self.config.install_path.join("ps_env").join(version.folder_name());
+        if cfg!(windows) {
+            python_folder.join("python.exe")
+        } else {
+            python_folder.join("bin").join("python")
+        }
+    }
+    
+    /// Get Python executable path for default version
+    pub fn get_default_python_executable_path(&self) -> PathBuf {
+        let default_version = self.get_default_python_version();
+        self.get_python_executable_path(&default_version)
+    }
+    
+    /// Check if a specific Python version is installed
+    pub fn is_python_version_installed(&self, version: &PythonVersion) -> bool {
+        self.get_python_executable_path(version).exists()
+    }
+
     /// Dynamically detect if CUDA should be installed based on GPU
     pub fn has_cuda(&self) -> bool {
         // Check if we have an NVIDIA GPU that supports CUDA
