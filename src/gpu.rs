@@ -198,7 +198,6 @@ impl GpuDetector {
         let gpu_type = if lower.contains("nvidia") { GpuType::Nvidia } else if lower.contains("amd") || lower.contains("radeon") { GpuType::Amd } else if lower.contains("intel") { GpuType::Intel } else { GpuType::Unknown };
         Some(GpuInfo { name: line, gpu_type, memory_mb: 0, driver_version: None })
     }
-
     
     fn determine_gpu_type(&self, name: &str) -> GpuType {
         let name_upper = name.to_uppercase();

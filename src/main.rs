@@ -69,9 +69,9 @@ async fn run(cli: Cli) -> Result<()> {
     #[cfg(windows)]
     let needs_install_path = matches!(cli.command, Some(Commands::SetupEnv) | Some(Commands::InstallRepo { .. }) | Some(Commands::UpdateRepo { .. }) | Some(Commands::DeleteRepo { .. }) | Some(Commands::ListRepos) | Some(Commands::CheckEnv) | Some(Commands::Pack { .. }));
     #[cfg(unix)]
-    let needs_install_path = matches!(cli.command, Some(Commands::SetupEnv) | Some(Commands::InstallRepo { .. }) | Some(Commands::UpdateRepo { .. }) | Some(Commands::DeleteRepo { .. }) | Some(Commands::ListRepos) | Some(Commands::ChangePath) | Some(Commands::CheckEnv) | Some(Commands::Uninstall) | Some(Commands::Pack { .. }));
+    let needs_install_path = matches!(cli.command, Some(Commands::SetupEnv) | Some(Commands::InstallRepo { .. }) | Some(Commands::UpdateRepo { .. }) | Some(Commands::DeleteRepo { .. }) | Some(Commands::ListRepos) | Some(Commands::ChangePath) | Some(Commands::CheckEnv) | Some(Commands::Uninstall));
     #[cfg(all(not(windows), not(unix)))]
-    let needs_install_path = matches!(cli.command, Some(Commands::SetupEnv) | Some(Commands::InstallRepo { .. }) | Some(Commands::UpdateRepo { .. }) | Some(Commands::DeleteRepo { .. }) | Some(Commands::ListRepos) | Some(Commands::CheckEnv) | Some(Commands::Pack { .. }));
+    let needs_install_path = matches!(cli.command, Some(Commands::SetupEnv) | Some(Commands::InstallRepo { .. }) | Some(Commands::UpdateRepo { .. }) | Some(Commands::DeleteRepo { .. }) | Some(Commands::ListRepos) | Some(Commands::CheckEnv));
 
     let install_path = if let Some(cached_path) = SESSION_INSTALL_PATH.get() {
         // Используем сохраненный путь из текущей сессии
@@ -589,6 +589,7 @@ fn ensure_config_initialized(config_manager: &mut ConfigManager) -> Result<()> {
 async fn check_environment(install_path: &PathBuf, _config_manager: &ConfigManager) -> Result<()> {
     println!("=== Environment Status ===");
     
+    #[cfg(windows)]
     let env_manager = PortableEnvironmentManager::new(install_path.clone());
     #[cfg(unix)]
     let status = {
