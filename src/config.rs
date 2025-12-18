@@ -416,20 +416,39 @@ impl ConfigManager {
     
 
 
-    /// Populate config based on existing ps_env content and nvidia-smi CUDA version
+/// Populate config based on existing ps_env content and nvidia-smi CUDA version
     pub fn hydrate_from_existing_env(&mut self) -> Result<()> {
         if self.config.install_path.as_os_str().is_empty() { return Ok(()); }
         let ps_env = self.config.install_path.join("ps_env");
         if !ps_env.exists() { return Ok(()); }
 
-        // CUDA paths are now computed dynamically when needed
-
         // Mark environment as setup if core tools exist
-        let python_exe = if cfg!(windows) { ps_env.join("python").join("python.exe") } else { ps_env.join("python").join("bin").join("python") };
-        let git_exe = if cfg!(windows) { ps_env.join("git").join("cmd").join("git.exe") } else { ps_env.join("git").join("bin").join("git") };
-        let ffmpeg_exe = if cfg!(windows) { ps_env.join("ffmpeg").join("ffmpeg.exe") } else { ps_env.join("ffmpeg").join("ffmpeg") };
-        if python_exe.exists() && git_exe.exists() && ffmpeg_exe.exists() {
-            self.config.environment_setup_completed = true;
+        if cfg!(windows) {
+            // Проверка Python (ищем любую валидную версию)
+            let has_python = ps_env.join("python311").join("python.exe").exists()
+                || ps_env.join("python310").join("python.exe").exists()
+                || ps_env.join("python").join("python.exe").exists(); // legacy
+
+            // Проверка Git (cmd или bin)
+            let has_git = ps_env.join("git").join("cmd").join("git.exe").exists() 
+                || ps_env.join("git").join("bin").join("git.exe").exists();
+
+            // Проверка FFmpeg (корень или bin)
+            let has_ffmpeg = ps_env.join("ffmpeg").join("ffmpeg.exe").exists()
+                || ps_env.join("ffmpeg").join("bin").join("ffmpeg.exe").exists();
+
+            if has_python && has_git && has_ffmpeg {
+                self.config.environment_setup_completed = true;
+            }
+        } else {
+            // Linux logic
+            let python_exe = ps_env.join("python").join("bin").join("python");
+            let git_exe = ps_env.join("git").join("bin").join("git");
+            let ffmpeg_exe = ps_env.join("ffmpeg").join("ffmpeg");
+            
+            if python_exe.exists() && git_exe.exists() && ffmpeg_exe.exists() {
+                self.config.environment_setup_completed = true;
+            }
         }
 
         // Unix: also consider micromamba base env as a completed base

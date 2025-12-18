@@ -1014,28 +1014,34 @@ impl PortableEnvironmentManager {
 /// Get path to Python executable
     pub fn get_python_executable(&self) -> Option<PathBuf> {
         if cfg!(windows) {
-            // 1. Сначала проверяем версию из файла pythonver, если он есть
-            if let Ok(content) = std::fs::read_to_string(self.ps_env_path.join("pythonver")) {
-                let ver = content.trim(); // например "311"
-                let folder = format!("python{}", ver); // "python311"
-                let p = self.ps_env_path.join(&folder).join("python.exe");
-                if p.exists() { return Some(p); }
+            // 1. Сначала читаем файл pythonver, чтобы узнать, какую версию хочет пользователь
+            // Этот файл создается при установке (setup_env)
+            let version_file = self.ps_env_path.join("pythonver");
+            if let Ok(ver) = std::fs::read_to_string(&version_file) {
+                let ver = ver.trim(); // например "311"
+                // Формируем путь: ps_env/python311/python.exe
+                let specific_path = self.ps_env_path.join(format!("python{}", ver)).join("python.exe");
+                if specific_path.exists() {
+                    return Some(specific_path);
+                }
             }
 
-            // 2. Если файла нет или путь неверен, ищем явно папки 311/310
+            // 2. Если файла настройки нет (или он битый), ищем папки явно по приоритету
+            // Сначала 3.11 (основная)
             let p311 = self.ps_env_path.join("python311").join("python.exe");
             if p311.exists() { return Some(p311); }
 
+            // Потом 3.10
             let p310 = self.ps_env_path.join("python310").join("python.exe");
             if p310.exists() { return Some(p310); }
 
-            // 3. Старый вариант (fallback)
-            let p_legacy = self.ps_env_path.join("python").join("python.exe");
-            if p_legacy.exists() { return Some(p_legacy); }
+            // 3. И только в конце проверяем старый путь (для обратной совместимости)
+            let legacy = self.ps_env_path.join("python").join("python.exe");
+            if legacy.exists() { return Some(legacy); }
 
             None
         } else {
-            // Linux: prefer micromamba base if present
+            // Логика для Linux/Unix
             let base = self.install_path.join("ps_env").join("mamba_env").join("bin").join("python");
             if base.exists() { return Some(base); }
             let p = self.ps_env_path.join("python").join("bin").join("python");
@@ -1043,6 +1049,10 @@ impl PortableEnvironmentManager {
             None
         }
     }
+
+
+
+
 
     /// Get path to Git executable
     pub fn get_git_executable(&self) -> Option<PathBuf> {
