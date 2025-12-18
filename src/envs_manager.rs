@@ -590,13 +590,11 @@ impl PortableEnvironmentManager {
         // Determine total steps before starting any tasks
         let mut cuda_plan: Option<(String, String)> = None; // (download_link, expected_folder)
         if self.config_manager.has_cuda() {
-            if let Some(cuda_ver) = self.config_manager.get_cuda_version()
+            // ВОТ ЗДЕСЬ БЫЛА ОШИБКА ↓
+            if let Some(cuda_ver) = self.config_manager.get_cuda_version() {
                 if self.config_manager.get_recommended_backend().contains("cuda") {
                     if let Some(link) = self.config_manager.get_cuda_download_link(Some(&cuda_ver)) {
-                        // count CUDA steps only if not installed
-                        if !self.is_cuda_installed() {
-                            total_steps += 2; // CUDA download + extract
-                        }
+                        if !self.is_cuda_installed() { total_steps += 2; }
                         let version_debug = format!("{:?}", cuda_ver).to_lowercase();
                         let cleaned = version_debug.replace("cuda", "").replace(['_', '"'], "");
                         let expected_folder = format!("cuda_{}", cleaned);
@@ -605,6 +603,7 @@ impl PortableEnvironmentManager {
                 }
             }
         }
+
         // Each tool: download + extract (only for missing ones)
         let mut tools_to_install: Vec<&str> = Vec::new();
         for key in ["python310", "python311", "git", "ffmpeg"] {
