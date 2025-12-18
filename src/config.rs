@@ -108,9 +108,9 @@ pub enum CudaVersionLinux {
 impl CudaVersion {
     pub fn get_download_url(&self) -> &'static str {
         match self {
-            CudaVersion::Cuda118 => "https://files.portables.dev/CUDA/CUDA_118.tar.zst",
-            CudaVersion::Cuda124 => "https://files.portables.dev/CUDA/CUDA_124.tar.zst",
-            CudaVersion::Cuda128 => "https://files.portables.dev/CUDA/CUDA_128.tar.zst",
+            CudaVersion::Cuda118 => "https://getfile.dokpub.com/yandex/get/https://disk.yandex.ru/d/Tl1V3xhXqOG5Eg",
+            CudaVersion::Cuda124 => "https://getfile.dokpub.com/yandex/get/https://disk.yandex.ru/d/8xp_2uTZ5HtHIw",
+            CudaVersion::Cuda128 => "https://getfile.dokpub.com/yandex/get/https://disk.yandex.ru/d/W85WVAi_6kdcJQ",
         }
     }
 }
@@ -127,11 +127,11 @@ pub enum ToolLinks {
 impl ToolLinks {
     pub fn url(&self) -> &'static str {
         match self {
-            ToolLinks::Git => "https://files.portables.dev/git.tar.zst",
-            ToolLinks::Ffmpeg => "https://files.portables.dev/ffmpeg.tar.zst",
-            ToolLinks::Python(PythonVersion::Python310) => "https://files.portables.dev/python310.tar.zst",
-            ToolLinks::Python(PythonVersion::Python311) => "https://files.portables.dev/python311.tar.zst",
-            ToolLinks::MsvcBuildTools => "https://aka.ms/vs/17/release/vs_buildtools.exe",
+            ToolLinks::Git => "https://getfile.dokpub.com/yandex/get/https://disk.yandex.ru/d/BQx3WpS_9KERWg",
+            ToolLinks::Ffmpeg => "https://getfile.dokpub.com/yandex/get/https://disk.yandex.ru/d/M3gb4nZAqSUhRQ",
+            ToolLinks::Python(PythonVersion::Python310) => "https://getfile.dokpub.com/yandex/get/https://disk.yandex.ru/d/q4ipYM52CdLthA",
+            ToolLinks::Python(PythonVersion::Python311) => "https://getfile.dokpub.com/yandex/get/https://disk.yandex.ru/d/frTjUovZLkujiA",
+            ToolLinks::MsvcBuildTools => "https://getfile.dokpub.com/yandex/get/https://disk.yandex.ru/d/LwUqbpnI7lsxyg",
             // ToolLinks::SevenZip больше не используется, так как перешли на tar zstd
         }
     }
