@@ -135,14 +135,15 @@ impl PortableEnvironmentManager {
             existing_len = destination.metadata()?.len();
         } else if let Some(parent) = destination.parent() { fs::create_dir_all(parent)?; }
 
-        // Проверяем полный размер файла с сервера
-        let head_resp = client.head(url).send()?;
-        if let Some(total_size) = head_resp.content_length() {
-            if existing_len == total_size {
-                // Файл уже полностью скачан
-                let file_name = destination.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "file".into());
-                println!("[Setup] {} already downloaded.", file_name);
-                return Ok(());
+        // ИЗМЕНЕНИЕ: Не падать, если HEAD запрос не прошел (игнорируем ошибку и идем дальше)
+        // Проверяем полный размер файла с сервера, если возможно
+        if let Ok(head_resp) = client.head(url).send() {
+            if let Some(total_size) = head_resp.content_length() {
+                if existing_len == total_size && total_size > 0 {
+                    let file_name = destination.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "file".into());
+                    println!("[Setup] {} already downloaded.", file_name);
+                    return Ok(());
+                }
             }
         }
 
@@ -228,14 +229,14 @@ impl PortableEnvironmentManager {
         if let Some(parent) = destination.parent() { fs::create_dir_all(parent)?; }
         let existing_len: u64 = if destination.exists() { destination.metadata()?.len() } else { 0 };
         
-        // Проверяем полный размер файла с сервера
-        let head_resp = client.head(&url).send()?;
-        if let Some(total_size) = head_resp.content_length() {
-            if existing_len == total_size {
-                // Файл уже полностью скачан
-                let file_name = destination.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "file".into());
-                println!("[Setup] {} already downloaded.", file_name);
-                return Ok(());
+        // ИЗМЕНЕНИЕ: Soft check для HEAD
+        if let Ok(head_resp) = client.head(&url).send() {
+            if let Some(total_size) = head_resp.content_length() {
+                if existing_len == total_size && total_size > 0 {
+                    let file_name = destination.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "file".into());
+                    println!("[Setup] {} already downloaded.", file_name);
+                    return Ok(());
+                }
             }
         }
         
@@ -374,11 +375,8 @@ impl PortableEnvironmentManager {
         let exe_path = self.ps_env_path.join(&spec.executable_path);
         if exe_path.exists() { return Ok(()); }
 
-        // Determine archive filename from URL
-        let archive_name = Url::parse(&spec.url)
-            .ok()
-            .and_then(|u| u.path_segments().and_then(|mut s| s.next_back()).map(|s| s.to_string()))
-            .unwrap_or_else(|| format!("{}.tar.zst", spec.name));
+        // ИЗМЕНЕНИЕ: Жестко задаем имя архива, не полагаясь на URL
+        let archive_name = format!("{}.tar.zst", spec.name);
         let archive_path = self.ps_env_path.join(&archive_name);
 
         self.download_with_resume(&spec.url, &archive_path)?;
@@ -593,7 +591,7 @@ impl PortableEnvironmentManager {
         // Determine total steps before starting any tasks
         let mut cuda_plan: Option<(String, String)> = None; // (download_link, expected_folder)
         if self.config_manager.has_cuda() {
-            if let Some(cuda_ver) = self.config_manager.get_cuda_version() {
+            if let Some(cuda_ver) = self.config_manager.get_cuda_version() install_portable_tool{
                 if self.config_manager.get_recommended_backend().contains("cuda") {
                     if let Some(link) = self.config_manager.get_cuda_download_link(Some(&cuda_ver)) {
                         // count CUDA steps only if not installed
@@ -671,10 +669,9 @@ impl PortableEnvironmentManager {
         for key in tools_to_install {
             if let Some(spec) = self.tool_specs.get(key) {
                 let url = spec.url.clone();
-                let archive_name = Url::parse(&url)
-                    .ok()
-                    .and_then(|u| u.path_segments().and_then(|mut s| s.next_back()).map(|s| s.to_string()))
-                    .unwrap_or_else(|| format!("{}.tar.zst", spec.name));
+
+				let archive_name = format!("{}.tar.zst", spec.name);
+
                 let ps_env = self.ps_env_path.clone();
                 let exe_rel = spec.executable_path.clone();
                 {
@@ -833,10 +830,9 @@ impl PortableEnvironmentManager {
         for key in tools_to_install {
             if let Some(spec) = self.tool_specs.get(key) {
                 let url = spec.url.clone();
-                let archive_name = Url::parse(&url)
-                    .ok()
-                    .and_then(|u| u.path_segments().and_then(|mut s| s.next_back()).map(|s| s.to_string()))
-                    .unwrap_or_else(|| format!("{}.tar.zst", spec.name));
+
+				let archive_name = format!("{}.tar.zst", spec.name);
+
                 let ps_env = self.ps_env_path.clone();
                 let exe_rel = spec.executable_path.clone();
                 let completed_t = completed.clone();
