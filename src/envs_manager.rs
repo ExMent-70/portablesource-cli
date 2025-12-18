@@ -1010,28 +1010,52 @@ impl PortableEnvironmentManager {
         Ok(())
     }
     
-    /// Get path to Python executable
+
+/// Get path to Python executable
     pub fn get_python_executable(&self) -> Option<PathBuf> {
         if cfg!(windows) {
-            let p = self.ps_env_path.join("python").join("python.exe");
-            if p.exists() { return Some(p); }
+            // 1. Сначала проверяем версию из файла pythonver, если он есть
+            if let Ok(content) = std::fs::read_to_string(self.ps_env_path.join("pythonver")) {
+                let ver = content.trim(); // например "311"
+                let folder = format!("python{}", ver); // "python311"
+                let p = self.ps_env_path.join(&folder).join("python.exe");
+                if p.exists() { return Some(p); }
+            }
+
+            // 2. Если файла нет или путь неверен, ищем явно папки 311/310
+            let p311 = self.ps_env_path.join("python311").join("python.exe");
+            if p311.exists() { return Some(p311); }
+
+            let p310 = self.ps_env_path.join("python310").join("python.exe");
+            if p310.exists() { return Some(p310); }
+
+            // 3. Старый вариант (fallback)
+            let p_legacy = self.ps_env_path.join("python").join("python.exe");
+            if p_legacy.exists() { return Some(p_legacy); }
+
+            None
         } else {
             // Linux: prefer micromamba base if present
             let base = self.install_path.join("ps_env").join("mamba_env").join("bin").join("python");
             if base.exists() { return Some(base); }
             let p = self.ps_env_path.join("python").join("bin").join("python");
             if p.exists() { return Some(p); }
+            None
         }
-        None
     }
 
-    // Removed: we universally use `python -m pip` via repository_installer
-    
     /// Get path to Git executable
     pub fn get_git_executable(&self) -> Option<PathBuf> {
         if cfg!(windows) {
-            let git_path = self.ps_env_path.join("git").join("bin").join("git.exe");
-            return if git_path.exists() { Some(git_path) } else { None };
+            // Git Portable часто лежит в cmd/git.exe
+            let cmd_git = self.ps_env_path.join("git").join("cmd").join("git.exe");
+            if cmd_git.exists() { return Some(cmd_git); }
+            
+            // Иногда (MinGW) он лежит в bin/git.exe
+            let bin_git = self.ps_env_path.join("git").join("bin").join("git.exe");
+            if bin_git.exists() { return Some(bin_git); }
+
+            None
         } else {
             // Prefer micromamba base
             let m_git = self.install_path.join("ps_env").join("mamba_env").join("bin").join("git");
@@ -1045,8 +1069,15 @@ impl PortableEnvironmentManager {
     /// Get path to FFmpeg executable
     pub fn get_ffmpeg_executable(&self) -> Option<PathBuf> {
         if cfg!(windows) {
-            let ffmpeg_path = self.ps_env_path.join("ffmpeg").join("ffmpeg.exe");
-            return if ffmpeg_path.exists() { Some(ffmpeg_path) } else { None };
+            // Обычная структура
+            let p1 = self.ps_env_path.join("ffmpeg").join("ffmpeg.exe");
+            if p1.exists() { return Some(p1); }
+            
+            // Часто ffmpeg лежит в подпапке bin (ffmpeg/bin/ffmpeg.exe)
+            let p2 = self.ps_env_path.join("ffmpeg").join("bin").join("ffmpeg.exe");
+            if p2.exists() { return Some(p2); }
+
+            None
         } else {
             let m_ff = self.install_path.join("ps_env").join("mamba_env").join("bin").join("ffmpeg");
             if m_ff.exists() { return Some(m_ff); }
@@ -1055,7 +1086,8 @@ impl PortableEnvironmentManager {
             None
         }
     }
-    
+
+  
     /// Detailed environment status (summary)
     pub fn get_environment_status(&self) -> Result<EnvironmentStatus> {
         let mut status = EnvironmentStatus {
