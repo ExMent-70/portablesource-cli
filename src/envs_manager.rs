@@ -830,9 +830,7 @@ impl PortableEnvironmentManager {
         for key in tools_to_install {
             if let Some(spec) = self.tool_specs.get(key) {
                 let url = spec.url.clone();
-
 				let archive_name = format!("{}.tar.zst", spec.name);
-
                 let ps_env = self.ps_env_path.clone();
                 let exe_rel = spec.executable_path.clone();
                 let completed_t = completed.clone();
