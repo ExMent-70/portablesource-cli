@@ -545,7 +545,7 @@ impl<'a> PipManager<'a> {
         }
         onnx_cmd.push(onnx_spec);
         
-        if let Err(_) = self.command_runner.run(&onnx_cmd, Some("Installing ONNX with GPU support"), repo_path) {
+        if let Err(_) = self.command_runner.run_verbose(&onnx_cmd, Some("Installing ONNX with GPU support"), repo_path) {
             // Fallback without --pre if it fails
             if self.needs_onnx_nightly() {
                 let mut fallback_cmd = if uv_available {
@@ -561,7 +561,7 @@ impl<'a> PipManager<'a> {
                     fallback_cmd.extend(["--index-strategy".into(), "unsafe-best-match".into()]);
                 }
                 fallback_cmd.push(self.get_onnx_package_spec());
-                let _ = self.command_runner.run(&fallback_cmd, Some("Installing ONNX (fallback)"), repo_path);
+                let _ = self.command_runner.run_verbose(&fallback_cmd, Some("Installing ONNX (fallback)"), repo_path);
             }
         }
 
@@ -596,7 +596,7 @@ impl<'a> PipManager<'a> {
                     "torchaudio".into()
                 ]);
                 
-                if let Err(_) = self.command_runner.run_silent(&reinstall_cmd, Some("Reinstalling torch with CUDA"), repo_path) {
+                if let Err(_) = self.command_runner.run_verbose(&reinstall_cmd, Some("Reinstalling torch with CUDA"), repo_path) {
                     // Fallback to pip if uv fails
                     if uv_available {
                         let mut pip_cmd = self.get_pip_executable(repo_name);
@@ -609,7 +609,7 @@ impl<'a> PipManager<'a> {
                             "torchvision".into(), 
                             "torchaudio".into()
                         ]);
-                        let _ = self.command_runner.run_silent(&pip_cmd, Some("Reinstalling torch with CUDA (pip)"), repo_path);
+                        let _ = self.command_runner.run_verbose(&pip_cmd, Some("Reinstalling torch with CUDA (pip)"), repo_path);
                     }
                 }
             }
@@ -1023,7 +1023,7 @@ impl<'a> PipManager<'a> {
                     wheel.into(),
                     "numpy==1.26.4".into()
                 ]);
-                self.command_runner.run(&uv_cmd, Some("Installing insightface + numpy (uv)"), repo_path)
+                self.command_runner.run_verbose(&uv_cmd, Some("Installing insightface + numpy (uv)"), repo_path)
             } else {
                 let mut pip_cmd = self.get_pip_executable(repo_name);
                 pip_cmd.extend([
@@ -1033,7 +1033,7 @@ impl<'a> PipManager<'a> {
                     wheel.into(),
                     "numpy==1.26.4".into()
                 ]);
-                self.command_runner.run(&pip_cmd, Some("Installing insightface + numpy (pip)"), repo_path)
+                self.command_runner.run_verbose(&pip_cmd, Some("Installing insightface + numpy (pip)"), repo_path)
             }
         }
         
@@ -1051,7 +1051,7 @@ impl<'a> PipManager<'a> {
                     "insightface".into(), 
                     "numpy==1.26.4".into()
                 ]);
-                self.command_runner.run(&uv_cmd, Some("Installing insightface + numpy (uv)"), repo_path)
+                self.command_runner.run_verbose(&uv_cmd, Some("Installing insightface + numpy (uv)"), repo_path)
             } else {
                 let mut pip_cmd = self.get_pip_executable(repo_name);
                 pip_cmd.extend([
@@ -1061,7 +1061,7 @@ impl<'a> PipManager<'a> {
                     "insightface".into(), 
                     "numpy==1.26.4".into()
                 ]);
-                self.command_runner.run(&pip_cmd, Some("Installing insightface + numpy (pip)"), repo_path)
+                self.command_runner.run_verbose(&pip_cmd, Some("Installing insightface + numpy (pip)"), repo_path)
             }
         }
     }

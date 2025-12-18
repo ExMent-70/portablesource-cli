@@ -47,6 +47,27 @@ impl<'a> CommandRunner<'a> {
         Self { env_manager }
     }
 
+/// Запуск команды с прямым выводом в консоль (для отображения прогресс-баров pip/uv)
+    pub fn run_verbose(&self, args: &[String], label: Option<&str>, cwd: Option<&Path>) -> Result<()> {
+        if args.is_empty() { return Ok(()); }
+        
+        // Логируем начало операции, чтобы пользователь знал, что происходит
+        if let Some(l) = label { info!("{}...", l); }
+
+        let mut cmd = self.create_command(args, cwd);
+        
+        // ГЛАВНОЕ ИЗМЕНЕНИЕ: inherit направляет вывод прямо в терминал
+        cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
+        
+        let status = cmd.status().map_err(|e| PortableSourceError::command(e.to_string()))?;
+        
+        if !status.success() {
+            return Err(PortableSourceError::command(format!("Command failed with status: {}", status)));
+        }
+        Ok(())
+    }
+
+
     /// Публичный метод для запуска команды с выводом в лог.
     /// Это замена `run_tool_with_env`.
     pub fn run(&self, args: &[String], label: Option<&str>, cwd: Option<&Path>) -> Result<()> {
