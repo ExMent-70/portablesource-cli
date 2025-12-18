@@ -21,7 +21,6 @@
 
 use crate::{Result, PortableSourceError};
 use crate::config::{ConfigManager, ToolLinks};
-use url::Url;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Seek, SeekFrom, Read, Write};
 use std::path::Path;
@@ -591,7 +590,7 @@ impl PortableEnvironmentManager {
         // Determine total steps before starting any tasks
         let mut cuda_plan: Option<(String, String)> = None; // (download_link, expected_folder)
         if self.config_manager.has_cuda() {
-            if let Some(cuda_ver) = self.config_manager.get_cuda_version() install_portable_tool{
+            if let Some(cuda_ver) = self.config_manager.get_cuda_version()
                 if self.config_manager.get_recommended_backend().contains("cuda") {
                     if let Some(link) = self.config_manager.get_cuda_download_link(Some(&cuda_ver)) {
                         // count CUDA steps only if not installed
