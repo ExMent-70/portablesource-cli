@@ -21,6 +21,7 @@ pub mod dependency_installer;
 pub mod script_generator;
 pub mod server_client;
 pub mod main_file_finder;
+pub mod templates; // <-- Добавлено
 
 pub use command_runer::CommandRunner;
 pub use git_manager::{GitManager, RepositoryInfo};
