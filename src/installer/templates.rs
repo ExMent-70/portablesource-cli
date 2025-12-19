@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//! Script generator module for creating platform-specific startup scripts.
+//! Script generator module for creating platform-specific startup scripts (PySM).
 
 // portablesource/src/installer/templates.rs
 

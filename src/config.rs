@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//! Configuration management for PortableSource
+//! Configuration management for PortableSource and PySM
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -22,7 +22,6 @@ use std::path::{PathBuf};
 use crate::{Result, PortableSourceError};
 use crate::gpu::{GpuDetector, GpuInfo};
 use log::{info, warn};
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum PythonVersion {
@@ -106,156 +105,12 @@ pub enum CudaVersionLinux {
     Cuda128,
 }
 
-
-// --- 1. Добавляем структуры данных (вставьте это перед impl CudaVersion) ---
-
-// Добавляем Deserialize, Serialize и меняем &str на String
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TorchPackageInfo {
-    pub url: String,
-    pub filename: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TorchPackages {
-    pub torch: TorchPackageInfo,
-    pub torchvision: TorchPackageInfo,
-    pub torchaudio: TorchPackageInfo,
-}
-
-// Структура для самого JSON файла
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TorchConfigManifest {
-    // Ключ 1: Версия CUDA ("118", "124", "128")
-    // Ключ 2: Версия Python ("310", "311")
-    pub packages: HashMap<String, HashMap<String, TorchPackages>>,
-}
-
-
 impl CudaVersion {
-    // Этот метод остался без изменений (качает установщик CUDA Toolkit)
     pub fn get_download_url(&self) -> &'static str {
         match self {
             CudaVersion::Cuda118 => "https://getfile.dokpub.com/yandex/get/https://disk.yandex.ru/d/Tl1V3xhXqOG5Eg",
             CudaVersion::Cuda124 => "https://getfile.dokpub.com/yandex/get/https://disk.yandex.ru/d/8xp_2uTZ5HtHIw",
             CudaVersion::Cuda128 => "https://getfile.dokpub.com/yandex/get/https://disk.yandex.ru/d/W85WVAi_6kdcJQ",
-        }
-    }
-
-    // НОВЫЙ МЕТОД: Возвращает ссылки на whl файлы PyTorch
-    pub fn get_default_torch_packages(&self, py_ver: &PythonVersion) -> TorchPackages {
-        match (self, py_ver) {
-            
-            // ======================================================
-            // Группа 1: CUDA 11.8 (Старые карты Pascal / GTX 10xx)
-            // Обычно ставится Torch 2.4.0 или 2.4.1
-            // ======================================================
-            
-            // Python 3.10
-            (CudaVersion::Cuda118, PythonVersion::Python310) => TorchPackages {
-                torch: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_TORCH_CU118_CP310".to_string(), 
-                    filename: "torch-2.4.0+cu118-cp310-cp310-win_amd64.whl".to_string()
-                },
-                torchvision: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_VISION_CU118_CP310".to_string(),
-                    filename: "torchvision-0.19.0+cu118-cp310-cp310-win_amd64.whl".to_string()
-                },
-                torchaudio: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_AUDIO_CU118_CP310".to_string(),
-                    filename: "torchaudio-2.4.0+cu118-cp310-cp310-win_amd64.whl".to_string()
-                },
-            },
-            
-            // Python 3.11
-            (CudaVersion::Cuda118, PythonVersion::Python311) => TorchPackages {
-                torch: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_TORCH_CU118_CP311".to_string(),
-                    filename: "torch-2.4.0+cu118-cp311-cp311-win_amd64.whl".to_string()
-                },
-                torchvision: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_VISION_CU118_CP311".to_string(),
-                    filename: "torchvision-0.19.0+cu118-cp311-cp311-win_amd64.whl".to_string()
-                },
-                torchaudio: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_AUDIO_CU118_CP311".to_string(),
-                    filename: "torchaudio-2.4.0+cu118-cp311-cp311-win_amd64.whl".to_string()
-                },
-            },
-
-            // ======================================================
-            // Группа 2: CUDA 12.4 (RTX 30xx, 40xx)
-            // Обычно ставится Torch 2.5.1
-            // ======================================================
-
-            // Python 3.10
-            (CudaVersion::Cuda124, PythonVersion::Python310) => TorchPackages {
-                torch: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_TORCH_CU124_CP310".to_string(),
-                    filename: "torch-2.5.1+cu124-cp310-cp310-win_amd64.whl".to_string()
-                },
-                torchvision: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_VISION_CU124_CP310".to_string(),
-                    filename: "torchvision-0.20.1+cu124-cp310-cp310-win_amd64.whl".to_string()
-                },
-                torchaudio: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_AUDIO_CU124_CP310".to_string(),
-                    filename: "torchaudio-2.5.1+cu124-cp310-cp310-win_amd64.whl".to_string()
-                },
-            },
-
-            // Python 3.11
-            (CudaVersion::Cuda124, PythonVersion::Python311) => TorchPackages {
-                torch: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_TORCH_CU124_CP311".to_string(),
-                    filename: "torch-2.5.1+cu124-cp311-cp311-win_amd64.whl".to_string()
-                },
-                torchvision: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_VISION_CU124_CP311".to_string(),
-                    filename: "torchvision-0.20.1+cu124-cp311-cp311-win_amd64.whl".to_string()
-                },
-                torchaudio: TorchPackageInfo {
-                    url: "ВСТАВЬ_СЮДА_ССЫЛКУ_НА_AUDIO_CU124_CP311".to_string(),
-                    filename: "torchaudio-2.5.1+cu124-cp311-cp311-win_amd64.whl".to_string()
-                },
-            },
-
-            // ======================================================
-            // Группа 3: CUDA 12.8 (RTX 50xx / Новейшие)
-            // Сюда вы пропишете ссылки на Torch 2.6 или новее, когда зальете их
-            // ======================================================
-            
-            // Python 3.10
-            (CudaVersion::Cuda128, PythonVersion::Python310) => TorchPackages {
-                torch: TorchPackageInfo {
-                    url: "ВСТАВЬ_ССЫЛКУ".to_string(),
-                    filename: "torch-2.6.0+cu124-cp310-cp310-win_amd64.whl".to_string() // Имя примерное!
-                },
-                torchvision: TorchPackageInfo {
-                    url: "ВСТАВЬ_ССЫЛКУ".to_string(),
-                    filename: "torchvision-0.21.0+cu124-cp310-cp310-win_amd64.whl".to_string()
-                },
-                torchaudio: TorchPackageInfo {
-                    url: "ВСТАВЬ_ССЫЛКУ".to_string(),
-                    filename: "torchaudio-2.6.0+cu124-cp310-cp310-win_amd64.whl".to_string()
-                },
-            },
-
-            // Python 3.11
-            (CudaVersion::Cuda128, PythonVersion::Python311) => TorchPackages {
-                torch: TorchPackageInfo {
-                    url: "ВСТАВЬ_ССЫЛКУ".to_string(),
-                    filename: "torch-2.6.0+cu124-cp311-cp311-win_amd64.whl".to_string() // Имя примерное!
-                },
-                torchvision: TorchPackageInfo {
-                    url: "ВСТАВЬ_ССЫЛКУ".to_string(),
-                    filename: "torchvision-0.21.0+cu124-cp311-cp311-win_amd64.whl".to_string()
-                },
-                torchaudio: TorchPackageInfo {
-                    url: "ВСТАВЬ_ССЫЛКУ".to_string(),
-                    filename: "torchaudio-2.6.0+cu124-cp311-cp311-win_amd64.whl".to_string()
-                },
-            },
         }
     }
 }
@@ -740,38 +595,7 @@ impl ConfigManager {
         info!("Configuration loaded from: {:?}", self.config_path);
         Ok(())
     }
-
-    pub fn resolve_torch_packages(&self, cuda_ver: &CudaVersion, py_ver: &PythonVersion) -> TorchPackages {
-        // ИЗМЕНЕНИЕ: Ищем файл прямо в корне установки (C:\456\torch_config.json)
-        let config_path = self.config.install_path.join("torch_config.json");
-        
-        if config_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&config_path) {
-                if let Ok(manifest) = serde_json::from_str::<TorchConfigManifest>(&content) {
-                    // Парсим ключи
-                    let cuda_key = match cuda_ver {
-                        CudaVersion::Cuda118 => "118",
-                        CudaVersion::Cuda124 => "124",
-                        CudaVersion::Cuda128 => "128",
-                    };
-                    let py_key = py_ver.as_str(); // "310" или "311"
-
-                    // Пытаемся найти нужную запись в JSON
-                    if let Some(py_map) = manifest.packages.get(cuda_key) {
-                        if let Some(packages) = py_map.get(py_key) {
-                            log::info!("Loaded Torch configuration from external JSON file: {:?}", config_path);
-                            return packages.clone();
-                        }
-                    }
-                } else {
-                    log::warn!("Failed to parse torch_config.json, using built-in defaults");
-                }
-            }
-        }
-
-        // Если файла нет или ключа нет - используем хардкод
-        cuda_ver.get_default_torch_packages(py_ver)
-    }    
+    
 }
 
 // Detect CUDA version by parsing `nvcc --version` output (Linux)
