@@ -565,54 +565,54 @@ impl<'a> PipManager<'a> {
             }
         }
 
-        // Check if torch is installed and reinstall with CUDA index if needed
-        let mut check_cmd = self.get_pip_executable(repo_name);
-        check_cmd.extend(["show".into(), "torch".into()]);
-        
-        let cfg = self.config_manager.get_config();
-        let venv_path = cfg.install_path.join("envs").join(repo_name);
-        
-        if let Ok(output) = std::process::Command::new(&check_cmd[0])
-            .args(&check_cmd[1..])
-            .env("VIRTUAL_ENV", venv_path)
-            .output() {
-            if output.status.success() {
-                let mut reinstall_cmd = if uv_available {
-                    let mut cmd = self.get_uv_executable(repo_name);
-                    cmd.extend(["pip".into(), "install".into()]);
-                    cmd
-                } else {
-                    let mut cmd = self.get_pip_executable(repo_name);
-                    cmd.push("install".into());
-                    cmd
-                };
+        // Если у нас есть GPU и мы знаем версию CUDA
+        if self.config_manager.has_cuda() {
+            if let Some(cuda_ver) = self.config_manager.get_cuda_version() {
+                // Определяем версию Python (3.10 или 3.11), чтобы скачать правильный файл
+                let py_ver = self.config_manager.get_default_python_version();
                 
-                reinstall_cmd.extend([
-                    "--force-reinstall".into(), 
-                    "--index-url".into(), 
-                    self.get_default_torch_index_url(),
-                    "torch".into(), 
-                    "torchvision".into(), 
-                    "torchaudio".into()
-                ]);
+                info!("Ensuring Torch wheels are available for CUDA {:?} / Python {:?}", cuda_ver, py_ver);
                 
-                if let Err(_) = self.command_runner.run_verbose(&reinstall_cmd, Some("Reinstalling torch with CUDA"), repo_path) {
-                    // Fallback to pip if uv fails
-                    if uv_available {
-                        let mut pip_cmd = self.get_pip_executable(repo_name);
-                        pip_cmd.extend([
-                            "install".into(), 
-                            "--force-reinstall".into(), 
-                            "--index-url".into(), 
-                            self.get_default_torch_index_url(),
-                            "torch".into(), 
-                            "torchvision".into(), 
-                            "torchaudio".into()
-                        ]);
-                        let _ = self.command_runner.run_verbose(&pip_cmd, Some("Reinstalling torch with CUDA (pip)"), repo_path);
+                // 1. Вызываем метод из envs_manager (через command_runner), чтобы скачать файлы
+                // Он вернет вектор путей: [path_to_torch, path_to_vision, path_to_audio]
+                match self.command_runner.env_manager.ensure_torch_wheels(&cuda_ver, &py_ver) {
+                    Ok(wheel_paths) => {
+                        info!("Torch wheels are ready. Installing from local cache...");
+
+                        // 2. Подготавливаем команду (pip или uv)
+                        let mut reinstall_cmd = if uv_available {
+                            let mut cmd = self.get_uv_executable(repo_name);
+                            cmd.extend(["pip".into(), "install".into()]);
+                            cmd
+                        } else {
+                            let mut cmd = self.get_pip_executable(repo_name);
+                            cmd.push("install".into());
+                            cmd
+                        };
+
+                        // 3. Добавляем флаг принудительной переустановки
+                        reinstall_cmd.push("--force-reinstall".into());
+                        
+                        // 4. Добавляем пути к локальным файлам .whl
+                        for path in wheel_paths {
+                            reinstall_cmd.push(path.to_string_lossy().to_string());
+                        }
+
+                        // 5. Запускаем установку (с отображением прогресса)
+                        if let Err(e) = self.command_runner.run_verbose(&reinstall_cmd, Some("Installing Torch form Local Wheels"), repo_path) {
+                            log::error!("Failed to install torch wheels: {}", e);
+                        } else {
+                            info!("Torch successfully installed from local wheels.");
+                        }
+                    },
+                    Err(e) => {
+                         log::error!("Failed to download torch wheels: {}", e);
+                         println!("[ERROR] Failed to download torch wheels. Check your internet connection.");
                     }
                 }
             }
+        } else {
+            info!("No CUDA detected, skipping torch wheel override (using CPU version).");
         }
 
         // Install Triton with platform-specific package names

@@ -1244,7 +1244,49 @@ impl PortableEnvironmentManager {
         }
     }
     
+/// Скачивает и кэширует колеса PyTorch для текущей конфигурации
+    pub fn ensure_torch_wheels(
+        &self, 
+        cuda_ver: &crate::config::CudaVersion, 
+        py_ver: &crate::config::PythonVersion
+    ) -> Result<Vec<PathBuf>> {
+        // 1. Получаем ссылки и имена файлов из конфига
+        let packages = self.config_manager.resolve_torch_packages(cuda_ver, py_ver);
+        
+        // 2. Определяем папку кэша: ps_env/cache/wheels
+        let cache_dir = self.ps_env_path.join("cache").join("wheels");
+        if !cache_dir.exists() {
+            std::fs::create_dir_all(&cache_dir)?;
+        }
 
+        let mut paths = Vec::new();
+        
+        // Список файлов для обработки (Torch, Vision, Audio)
+        let items = vec![packages.torch, packages.torchvision, packages.torchaudio];
+
+        println!("[Setup] Verifying PyTorch wheels for CUDA {:?}...", cuda_ver);
+
+        for item in items {
+            // Формируем полный путь к целевому файлу
+            let file_path = cache_dir.join(item.filename);
+            
+            // Если файла нет или он пустой (битый) - скачиваем
+            if !file_path.exists() || file_path.metadata()?.len() == 0 {
+                log::info!("Downloading {}...", item.filename);
+                println!("[Setup] Downloading {}...", item.filename);
+                
+                // Используем наш надежный метод скачивания
+                self.download_with_resume(item.url, &file_path)?;
+            } else {
+                log::info!("Using cached {}", item.filename);
+            }
+            
+            // Добавляем путь к скачанному файлу в список возврата
+            paths.push(file_path);
+        }
+
+        Ok(paths)
+    }
 }
 
 // Удалены функции sanitize_windows_path_for_7z и format_7z_out_arg

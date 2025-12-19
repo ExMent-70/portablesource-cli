@@ -39,7 +39,7 @@ pub enum CommandType {
 /// CommandRunner - это централизованный исполнитель всех внешних команд.
 /// Он держит ссылку на EnvironmentManager, чтобы правильно настраивать окружение.
 pub struct CommandRunner<'a> {
-    env_manager: &'a PortableEnvironmentManager,
+    pub env_manager: &'a PortableEnvironmentManager,
 }
 
 
