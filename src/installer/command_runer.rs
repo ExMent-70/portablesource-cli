@@ -107,6 +107,10 @@ impl<'a> CommandRunner<'a> {
     /// Создает объект `Command` с настроенным окружением.
     /// visible: если true, окно консоли будет видно (для run_verbose).
     fn create_command(&self, args: &[String], cwd: Option<&Path>, visible: bool) -> Command {
+        // ИЗМЕНЕНИЕ ЗДЕСЬ: Добавляем эту строку, чтобы компилятор не ругался на Linux
+        #[cfg(not(windows))]
+        let _ = visible; 
+		
         let mut cmd = Command::new(&args[0]);
         cmd.args(&args[1..]);
         if let Some(dir) = cwd {

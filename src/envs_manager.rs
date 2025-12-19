@@ -1276,7 +1276,7 @@ impl PortableEnvironmentManager {
                 println!("[Setup] Downloading {}...", item.filename);
                 
                 // Используем наш надежный метод скачивания
-                self.download_with_resume(item.url, &file_path)?;
+                self.download_with_resume(&item.url, &file_path)?;
             } else {
                 log::info!("Using cached {}", item.filename);
             }

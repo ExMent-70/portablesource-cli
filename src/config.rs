@@ -22,7 +22,7 @@ use std::path::{PathBuf};
 use crate::{Result, PortableSourceError};
 use crate::gpu::{GpuDetector, GpuInfo};
 use log::{info, warn};
-use std::collections::HashMap;
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum PythonVersion {
@@ -143,7 +143,7 @@ impl CudaVersion {
     }
 
     // НОВЫЙ МЕТОД: Возвращает ссылки на whl файлы PyTorch
-    pub fn get_torch_packages(&self, py_ver: &PythonVersion) -> TorchPackages {
+    pub fn get_default_torch_packages(&self, py_ver: &PythonVersion) -> TorchPackages {
         match (self, py_ver) {
             
             // ======================================================
