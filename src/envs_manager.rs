@@ -1268,7 +1268,7 @@ impl PortableEnvironmentManager {
 
         for item in items {
             // Формируем полный путь к целевому файлу
-            let file_path = cache_dir.join(item.filename);
+            let file_path = cache_dir.join(&item.filename);
             
             // Если файла нет или он пустой (битый) - скачиваем
             if !file_path.exists() || file_path.metadata()?.len() == 0 {
