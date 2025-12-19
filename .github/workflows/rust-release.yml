@@ -27,13 +27,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ЗАМЕНЕНО: Используем dtolnay/rust-toolchain вместо actions-rs
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          profile: minimal
-          override: true
-          target: ${{ matrix.target }}
+          targets: ${{ matrix.target }}
 
       - name: Install musl tools (Linux only)
         if: matrix.os == 'ubuntu-latest'
@@ -41,15 +39,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y musl-tools
 
-      # ИСПРАВЛЕННЫЙ ШАГ КЭШИРОВАНИЯ
       - name: Cache cargo
         uses: actions/cache@v4
         with:
-          # Мы убрали 'target' из списка путей, чтобы избежать таймаута на Windows
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          # Добавили суффикс '-v2', чтобы сбросить старый проблемный кэш
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}-v2
 
       - name: Build release
@@ -80,12 +75,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ЗАМЕНЕНО: Используем dtolnay/rust-toolchain вместо actions-rs
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Publish crate
         env:

@@ -33,14 +33,38 @@ set python_exe=%python_path%\python.exe
 set repo_path=%repos_path%\{{REPO_NAME}}
 
 set tmp_path=%base_path%\tmp
-set USERPROFILE=%tmp_path%
+
+REM === НАСТРОЙКИ ПРОФИЛЯ (SYSTEM INTEGRATION MODE) ===
+REM Мы НЕ переопределяем USERPROFILE и APPDATA, чтобы внешние программы 
+REM (Photoshop, Capture One) видели реальные настройки пользователя.
+REM set USERPROFILE=%tmp_path%
+REM set APPDATA=%tmp_path%\AppData\Roaming
+REM set LOCALAPPDATA=%tmp_path%\AppData\Local
+REM ===================================================
+
+REM === ПОРТАТИВНОСТЬ ДЛЯ PYTHON/AI ===
+REM Перенаправляем кэши тяжелых библиотек в портативную папку,
+REM чтобы не засорять диск C: и сохранять переносимость моделей.
+
 set TEMP=%tmp_path%\Temp
 set TMP=%tmp_path%\Temp
-set APPDATA=%tmp_path%\AppData\Roaming
-set LOCALAPPDATA=%tmp_path%\AppData\Local
+
+REM HuggingFace (Diffusers, Transformers)
 set HF_HOME=%repo_path%\huggingface_home
-set XDG_CACHE_HOME=%tmp_path%
 set HF_DATASETS_CACHE=%HF_HOME%\datasets
+
+REM Pip Cache (чтобы pip не качал пакеты в C:\Users\...)
+set PIP_CACHE_DIR=%tmp_path%\pip_cache
+
+REM PyTorch Cache
+set TORCH_HOME=%tmp_path%\torch_cache
+
+REM Gradio Temp (для временных картинок)
+set GRADIO_TEMP_DIR=%tmp_path%\gradio_temp
+
+REM Matplotlib и другие
+set MPLCONFIGDIR=%tmp_path%\matplotlib
+set XDG_CACHE_HOME=%tmp_path%
 
 set PYTHONIOENCODING=utf-8
 set PYTHONUNBUFFERED=1
@@ -210,14 +234,38 @@ set python_exe=%python_path%\python.exe
 set repo_path=%repos_path%\{{REPO_NAME}}
 
 set tmp_path=%base_path%\tmp
-set USERPROFILE=%tmp_path%
+
+REM === НАСТРОЙКИ ПРОФИЛЯ (SYSTEM INTEGRATION MODE) ===
+REM Мы НЕ переопределяем USERPROFILE и APPDATA, чтобы внешние программы 
+REM (Photoshop, Capture One) видели реальные настройки пользователя.
+REM set USERPROFILE=%tmp_path%
+REM set APPDATA=%tmp_path%\AppData\Roaming
+REM set LOCALAPPDATA=%tmp_path%\AppData\Local
+REM ===================================================
+
+REM === ПОРТАТИВНОСТЬ ДЛЯ PYTHON/AI ===
+REM Перенаправляем кэши тяжелых библиотек в портативную папку,
+REM чтобы не засорять диск C: и сохранять переносимость моделей.
+
 set TEMP=%tmp_path%\Temp
 set TMP=%tmp_path%\Temp
-set APPDATA=%tmp_path%\AppData\Roaming
-set LOCALAPPDATA=%tmp_path%\AppData\Local
+
+REM HuggingFace (Diffusers, Transformers)
 set HF_HOME=%repo_path%\huggingface_home
-set XDG_CACHE_HOME=%tmp_path%
 set HF_DATASETS_CACHE=%HF_HOME%\datasets
+
+REM Pip Cache (чтобы pip не качал пакеты в C:\Users\...)
+set PIP_CACHE_DIR=%tmp_path%\pip_cache
+
+REM PyTorch Cache
+set TORCH_HOME=%tmp_path%\torch_cache
+
+REM Gradio Temp (для временных картинок)
+set GRADIO_TEMP_DIR=%tmp_path%\gradio_temp
+
+REM Matplotlib и другие
+set MPLCONFIGDIR=%tmp_path%\matplotlib
+set XDG_CACHE_HOME=%tmp_path%
 
 set PYTHONIOENCODING=utf-8
 set PYTHONUNBUFFERED=1
